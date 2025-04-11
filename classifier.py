@@ -12,17 +12,22 @@ x_train = x_train.reshape(-1, 784) / 255.0
 x_test = x_test.reshape(-1, 784) / 255.0
 
 class Classifier:
-    def __init__(self, lr, hn1):
-        self.lr = lr
+    def __init__(self, lr, hn1, alpha):
+        self.lr = lr # Learning rate
+        self.alpha = alpha # Momentum scaling parameter
 
         # Hidden Layer 1
         self.W1 = np.random.randn(784, hn1) * np.sqrt(2 / 784)
         self.b1 = np.zeros((1, hn1))
+        self.M1_w = np.zeros((784, hn1))
+        self.M1_b = np.zeros((1, hn1))
 
         # Output layer
         lg, ug = -(1 / np.sqrt(hn1)), (1 / np.sqrt(hn1))
         self.W2 = lg + np.random.randn(hn1, 10) * (ug - lg)
         self.b2 = np.zeros((1, 10))
+        self.M2_w = np.zeros((hn1, 10))
+        self.M2_b = np.zeros((1, 10))
 
     def forward(self, X):
         
@@ -53,11 +58,16 @@ class Classifier:
         dW1 = (1 / m) * np.dot(X, dZ1)
         db1 = (1 / m) * np.sum(dZ1, axis=0, keepdims=True)
 
+        self.M2_w = self.alpha * self.M2_w + self.lr * dW2
+        self.M2_b = self.alpha * self.M2_b + self.lr * db2
+        self.M1_w = self.alpha * self.M1_w + self.lr * dW1
+        self.M1_b = self.alpha * self.M1_b + self.lr * db1
+
         # Update parameters
-        self.W2 -= self.lr * dW2
-        self.b2 -= self.lr * db2
-        self.W1 -= self.lr * dW1
-        self.b1 -= self.lr * db1
+        self.W2 -= self.M2_w
+        self.b2 -= self.M2_b
+        self.W1 -= self.M1_w
+        self.b1 -= self.M1_b
 
     def train(self, X, Y, epochs, batch_size=128):
         for e in range(epochs):
@@ -99,8 +109,12 @@ class Classifier:
         return e / np.sum(e, axis=1, keepdims=True)
     
 # Initialize and train the classifier
-classifier = Classifier(lr=0.01, hn1=128)
-classifier.train(x_train, y_train, epochs=10)
+classifier = Classifier(
+    lr=0.02, 
+    hn1=128,
+    alpha=0.5
+    )
+classifier.train(x_train, y_train, epochs=100)
 
 # Evaluate
 train_accuracy = classifier.accuracy(x_train, y_train)
